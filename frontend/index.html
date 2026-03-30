@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Monitoring Dashboard</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      background: #0f172a;
+      color: white;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 20px;
+    }
+
+    .container {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .card {
+      background: #1e293b;
+      padding: 20px;
+      margin: 15px;
+      border-radius: 12px;
+      width: 250px;
+    }
+
+    .bar {
+      height: 20px;
+      border-radius: 10px;
+      background: #334155;
+      overflow: hidden;
+    }
+
+    .fill {
+      height: 100%;
+      width: 0%;
+      background: green;
+      transition: width 0.5s;
+    }
+
+    ul {
+      text-align: left;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>Monitoring Dashboard</h1>
+
+<div class="container">
+
+  <div class="card">
+    <h3>CPU Usage</h3>
+    <div class="bar"><div id="cpuBar" class="fill"></div></div>
+    <p id="cpuText">0%</p>
+  </div>
+
+  <div class="card">
+    <h3>Memory Usage</h3>
+    <div class="bar"><div id="memBar" class="fill"></div></div>
+    <p id="memText">0%</p>
+  </div>
+
+  <div class="card">
+    <h3>Disk Usage</h3>
+    <div class="bar"><div id="diskBar" class="fill"></div></div>
+    <p id="diskText">0%</p>
+  </div>
+
+  <div class="card">
+    <h3>Containers</h3>
+    <ul id="containers"></ul>
+  </div>
+
+</div>
+
+<script>
+function getColor(value) {
+  if (value < 50) return "green";
+  if (value < 80) return "orange";
+  return "red";
+}
+
+async function loadStats() {
+  const res = await fetch("http://localhost:5002/stats");
+  const data = await res.json();
+
+  // CPU
+  document.getElementById("cpuBar").style.width = data.cpu + "%";
+  document.getElementById("cpuBar").style.background = getColor(data.cpu);
+  document.getElementById("cpuText").innerText = data.cpu + "%";
+
+  // Memory
+  document.getElementById("memBar").style.width = data.memory + "%";
+  document.getElementById("memBar").style.background = getColor(data.memory);
+  document.getElementById("memText").innerText = data.memory + "%";
+
+  // Disk
+  document.getElementById("diskBar").style.width = data.disk + "%";
+  document.getElementById("diskBar").style.background = getColor(data.disk);
+  document.getElementById("diskText").innerText = data.disk + "%";
+
+  // Containers
+  const list = document.getElementById("containers");
+  list.innerHTML = "";
+
+  data.containers.forEach(c => {
+    let li = document.createElement("li");
+    li.innerText = c;
+    list.appendChild(li);
+  });
+}
+
+setInterval(loadStats, 2000);
+loadStats();
+</script>
+
+</body>
+</html>
