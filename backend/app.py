@@ -1,9 +1,10 @@
 from flask import Flask, jsonify
+from flask_cors import CORS
 import psutil
 import subprocess
 
 app = Flask(__name__)
-
+CORS(app)
 @app.route('/')
 def home():
     return "Monitoring Server Running ^) "
