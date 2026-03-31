@@ -3,6 +3,9 @@
 <head>
   <title>Monitoring Dashboard</title>
 
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     body {
       font-family: Arial;
@@ -46,6 +49,20 @@
     ul {
       text-align: left;
     }
+
+    canvas {
+      margin-top: 20px;
+    }
+
+    pre {
+      text-align: left;
+      font-size: 12px;
+      background: black;
+      padding: 10px;
+      border-radius: 5px;
+      height: 150px;
+      overflow: auto;
+    }
   </style>
 </head>
 
@@ -78,7 +95,15 @@
     <ul id="containers"></ul>
   </div>
 
+  <div class="card">
+    <h3>Logs</h3>
+    <pre id="logs"></pre>
+  </div>
+
 </div>
+
+<!-- Chart -->
+<canvas id="cpuChart" width="400" height="200"></canvas>
 
 <script>
 function getColor(value) {
@@ -87,37 +112,105 @@ function getColor(value) {
   return "red";
 }
 
+let cpuData = [];
+let labels = [];
+
+const ctx = document.getElementById('cpuChart').getContext('2d');
+
+const cpuChart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: labels,
+    datasets: [{
+      label: 'CPU Usage',
+      data: cpuData,
+      borderWidth: 2
+    }]
+  },
+  options: {
+    scales: {
+      y: {
+        beginAtZero: true,
+        max: 100
+      }
+    }
+  }
+});
+
 async function loadStats() {
-  const res = await fetch("http://localhost:5002/stats");
-  const data = await res.json();
+  try {
+    const res = await fetch("http://localhost:5002/stats");
+    const data = await res.json();
 
-  // CPU
-  document.getElementById("cpuBar").style.width = data.cpu + "%";
-  document.getElementById("cpuBar").style.background = getColor(data.cpu);
-  document.getElementById("cpuText").innerText = data.cpu + "%";
+    // CPU
+    document.getElementById("cpuBar").style.width = data.cpu + "%";
+    document.getElementById("cpuBar").style.background = getColor(data.cpu);
+    document.getElementById("cpuText").innerText = data.cpu + "%";
 
-  // Memory
-  document.getElementById("memBar").style.width = data.memory + "%";
-  document.getElementById("memBar").style.background = getColor(data.memory);
-  document.getElementById("memText").innerText = data.memory + "%";
+    // Memory
+    document.getElementById("memBar").style.width = data.memory + "%";
+    document.getElementById("memBar").style.background = getColor(data.memory);
+    document.getElementById("memText").innerText = data.memory + "%";
 
-  // Disk
-  document.getElementById("diskBar").style.width = data.disk + "%";
-  document.getElementById("diskBar").style.background = getColor(data.disk);
-  document.getElementById("diskText").innerText = data.disk + "%";
+    // Disk
+    document.getElementById("diskBar").style.width = data.disk + "%";
+    document.getElementById("diskBar").style.background = getColor(data.disk);
+    document.getElementById("diskText").innerText = data.disk + "%";
 
-  // Containers
-  const list = document.getElementById("containers");
-  list.innerHTML = "";
+    // Containers
+    const list = document.getElementById("containers");
+    list.innerHTML = "";
 
-  data.containers.forEach(c => {
-    let li = document.createElement("li");
-    li.innerText = c;
-    list.appendChild(li);
-  });
+    data.containers.forEach(container => {
+      const li = document.createElement("li");
+      li.innerText = container;
+      list.appendChild(li);
+    });
+
+    // Logs (first container)
+    if (data.containers.length > 0) {
+      const containerName = data.containers[0];
+      const logsRes = await fetch(`http://localhost:5002/logs/${containerName}`);
+
+
+      let logsText = "";
+
+      try {
+        const logsData = await logsRes.json();
+        logsText = logsData.logs;
+      } catch {
+        logsText = await logsRes.text();
+      }
+
+      document.getElementById("logs").innerText = logsText;
+    }
+
+    // Chart update
+    let time = new Date().toLocaleTimeString();
+    labels.push(time);
+    cpuData.push(data.cpu);
+
+    if (labels.length > 10) {
+      labels.shift();
+      cpuData.shift();
+    }
+
+    cpuChart.update();
+
+    // Alert
+    if (data.cpu > 80) {
+      document.body.style.background = "darkred";
+    } else {
+      document.body.style.background = "#0f172a";
+    }
+
+  } catch (error) {
+    console.error("Error:", error);
+  }
 }
 
-setInterval(loadStats, 2000);
+// Auto refresh
+setInterval(loadStats, 5000);
 loadStats();
 </script>
 

@@ -5,9 +5,10 @@ import subprocess
 
 app = Flask(__name__)
 CORS(app)
+
 @app.route('/')
 def home():
-    return "Monitoring Server Running ^) "
+    return "Monitoring Server Running "
 
 @app.route('/stats')
 def stats():
@@ -16,9 +17,11 @@ def stats():
     disk = psutil.disk_usage('/').percent
 
     try:
-        containers = subprocess.check_output("docker ps --format '{{.Names}}'", shell=True).decode().split("\n")
+        containers = subprocess.check_output(
+            ["docker", "ps", "--format", "{{.Names}}"]
+        ).decode().split("\n")
         containers = [c for c in containers if c]
-    except:
+    except Exception as e:
         containers = []
 
     return jsonify({
@@ -28,5 +31,15 @@ def stats():
         "containers": containers
     })
 
+@app.route('/logs/<name>')
+def logs(name):
+    try:
+        output = subprocess.check_output(
+            ["docker", "logs", "--tail", "20", name]
+        ).decode()
+        return jsonify({"logs": output})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5002)
+    app.run(host='0.0.0.0', port=5002, debug=False)
